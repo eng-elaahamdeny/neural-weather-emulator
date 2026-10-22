@@ -1,59 +1,82 @@
-# Neural Weather Emulator — Atmospheric Pressure Prediction with GNNs
+# Neural Weather Emulator: 6-Hour Atmospheric Forecasting with Graph Neural Networks
 
-I built a Neural Weather Emulator — an AI model that predicts how the Earth's atmosphere evolves over time, inspired by DeepMind's GraphCast and trained on real scientific data from the European Centre for Medium-Range Weather Forecasts.
+A Graph Neural Network that predicts the state of the Earth's atmosphere 6 hours ahead, inspired by DeepMind's GraphCast and trained on ERA5 reanalysis data from the Copernicus Climate Data Store (ECMWF).
 
 ---
 
 ## What It Does
 
-My project is a Neural Weather Emulator — an AI model that predicts atmospheric pressure fields using Graph Neural Networks, inspired by DeepMind's GraphCast, one of the most significant breakthroughs in AI-driven weather forecasting.
+Every 6 hours, the state of the atmosphere can be described at each point of the globe by variables such as geopotential (pressure), temperature and wind. The model takes one snapshot and predicts the next one, 6 hours later.
 
-The idea is simple but powerful. Every 6 hours, the state of the entire Earth's atmosphere can be described by four variables at every location on the globe: geopotential (pressure), temperature, and wind in two directions. My model looks at one of these snapshots and predicts what the atmosphere will look like 6 hours later.
+Instead of treating the atmosphere as a flat image (CNN approach), the Earth is represented as a graph: each grid location is a node, connected to its geographic neighbors by edges. The GNN passes information along these edges, so each prediction depends on the surrounding region.
 
-What makes this project different from a standard deep learning approach is how I represent the atmosphere. Instead of treating it as a flat image and using a CNN, I treat the Earth as a graph — every location is a node, and every node is connected to its geographic neighbors by edges. This is physically meaningful because weather doesn't happen in isolation — a storm system in one location directly influences the surrounding areas. The Graph Neural Network learns to propagate this influence through the edges, exactly like real atmospheric dynamics work.
+## Data
 
-I trained the model on ERA5 reanalysis data from the Copernicus Climate Data Store — the same dataset DeepMind used for GraphCast. This is 3 months of real atmospheric data from 2020, one snapshot every 6 hours, covering the entire Earth at 0.25 degree resolution. That's over 65,000 locations per snapshot, 363 training pairs, and 12GB of real scientific data.
+- Source: ERA5 reanalysis, Copernicus Climate Data Store
+- Period: January to March 2020, one snapshot every 6 hours (364 time steps)
+- Resolution: 0.25 degrees (721 x 1440 grid), 2 pressure levels
+- Size: about 12 GB
+- Graph: 65,160 nodes and 259,558 edges
+- Training set: 363 input/output pairs (snapshot at t, snapshot at t + 6 h)
 
-The results are visualized on an interactive 3D globe where you can rotate the Earth and compare the model's predicted pressure field against the ground truth.
+## Model
 
----
+- 3-layer Graph Convolutional Network (PyTorch Geometric)
+- Trained for 10 epochs
+- This is a simplified model inspired by GraphCast. It does not reproduce GraphCast's encoder-processor-decoder architecture.
+
+## Results
+
+Prediction (left) versus ground truth (right) after a 6-hour forecast:
+
+![GNN 6-hour forecast vs reality](the%20result%20of%20my%20GNN's%206-hour%20forecast%20on%20the%20left%2C%20reality%20on%20the%20right..jpg)
+
+Real ERA5 pressure field, 1 January 2020:
+
+![ERA5 pressure field](the%20real%20ERA5%20atmospheric%20pressure%20field%20on%201st%20January%202020..jpg)
+
+Quantitative evaluation (to be completed):
+
+| Model | RMSE (test set) |
+|-------|-----------------|
+| Persistence baseline (forecast = current state) | [TO FILL] |
+| This GNN | [TO FILL] |
 
 ## Project Structure
 
 | File | Description |
 |------|-------------|
-| `test_env.py` | Verifies that PyTorch, PyTorch Geometric and xarray are installed correctly |
-| `download_era5.py` | Downloads 12GB of real ERA5 atmospheric data (Jan–Mar 2020) from Copernicus |
-| `explore_data.py` | Inspects the dataset structure — 364 time steps, 2 pressure levels, 721×1440 grid |
-| `visualize_data.py` | Plots a 2D world map of the atmospheric pressure field |
-| `globe_viz.py` | Creates an interactive 3D globe of the pressure field, rotatable in the browser |
-| `build_graph.py` | Converts the Earth grid into a graph — 65,160 nodes and 259,558 edges |
-| `model.py` | Defines the 3-layer Graph Convolutional Network architecture |
-| `prepare_data.py` | Normalizes the data and creates 363 input/output training pairs |
-| `train.py` | Trains the GNN for 10 epochs and saves the model as `weather_gnn.pt` |
-| `predict.py` | Runs the trained model and visualizes prediction vs reality on dual 3D globes |
+| `download_era5.py` | Downloads the ERA5 data (Jan to Mar 2020) from Copernicus |
+| `explore-data.py` | Inspects the dataset structure (time steps, levels, grid) |
+| `visualize-data.py` | Plots a 2D world map of the pressure field |
+| `globe-viz.py` | Creates an interactive 3D globe of the pressure field |
+| `build-graph.py` | Converts the Earth grid into a graph (65,160 nodes, 259,558 edges) |
+| `prepare-data.py` | Normalizes the data and builds the 363 training pairs |
+| `model.py` | Defines the 3-layer Graph Convolutional Network |
+| `train.py` | Trains the GNN for 10 epochs and saves the weights |
+| `predict.py` | Runs the trained model and compares prediction and reality on 3D globes |
+
+## How to Run
+
+1. Install the dependencies: `pip install torch torch_geometric xarray plotly cdsapi`
+2. Create a free Copernicus account and put your personal access token in `~/.cdsapirc` (in your user folder, not in this repo).
+3. Run in this order: `download_era5.py`, `prepare-data.py`, `build-graph.py`, `train.py`, `predict.py`
+
 ## Tech Stack
 
-- Python 3.11
-- PyTorch 2.11
-- PyTorch Geometric 2.7
-- xarray
-- ERA5 data from Copernicus Climate Data Store
-- Plotly
+Python 3.11, PyTorch 2.11, PyTorch Geometric 2.7, xarray, Plotly, ERA5 (Copernicus CDS)
 
----
+## Limitations and Next Steps
+
+- Only 3 months of data and a single 6-hour forecast step
+- Time-based train/test split and persistence baseline comparison
+- Multi-step rollout (12 h, 24 h)
+- Deeper architecture closer to GraphCast
 
 ## Inspiration
 
-Inspired by DeepMind's GraphCast (2023) — the first AI model to outperform traditional numerical weather prediction at global scale.
-
----
-
-## About
-
-This project demonstrates how Graph Neural Networks can be applied to real-world physical systems, and represents my first step into the intersection of aerospace engineering and artificial intelligence.
+GraphCast (Lam et al., DeepMind, 2023), a GNN-based global weather forecasting model.
 
 ## Author
-**Elaa Hamdani**  
-Engineering Student at INSAT – Instrumentation & Industrial Maintenance Engineering  
-Specialized in AI & Aerodynamics
+
+Elaa Hamdani, Engineering Student at INSAT, Instrumentation & Industrial Maintenance Engineering, specialized in AI & Aerodynamics
